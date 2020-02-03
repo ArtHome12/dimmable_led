@@ -1,0 +1,30 @@
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "includePath": [
+                "/home/artem/.arduino15/packages/arduino/tools/**",
+                "/home/artem/.arduino15/packages/arduino/hardware/avr/1.8.2/**"
+            ],
+            "forcedInclude": [
+                "/home/artem/.arduino15/packages/arduino/hardware/avr/1.8.2/cores/arduino/Arduino.h"
+            ],
+            "intelliSenseMode": "gcc-x64",
+            "compilerPath": "/usr/bin/clang",
+            "cStandard": "c11",
+            "cppStandard": "c++17",
+            "defines": [
+                "__AVR_atmega328p__",
+                "__AVR_ATmega328P__",
+                "__AVR_ATmega328p__",
+                "F_CPU=16000000L",
+                "ARDUINO=108010",
+                "ARDUINO_AVR_NANO",
+                "ARDUINO_ARCH_AVR",
+                "__cplusplus=201103L",
+                "_VMICRO_INTELLISENSE"
+              ]   
+        }
+    ],
+    "version": 4
+}
