@@ -18,8 +18,11 @@ const int bClick = 1;         // отжатие после щелчка
 const int bLongPress = 2;     // долгое нажатие
 const int bDobleClick = 3;    // двойной щелчок
 
-unsigned long previousMillis = 0;       // Момент последнего обновления
-const long maxClickDelay = 1000;         // Минимально необходимый интервал для работы внутри loop(), мс.
+unsigned long previousMillis = 0;         // Момент последнего обновления
+const unsigned long maxClickDelay = 500;  // Максимальное время для короткого щелчка, мс.
+const unsigned long longPressFirstDelay = 1000; // Время до первого события bLongPress, мс.
+const unsigned long longPressRepeatDelay = 50; // Время между повторными событиями bLongPress, мс.
+unsigned long previousClickMillis = 0;    // Время последнего короткого щелчка (для генерации двойного), мс.
 
 bool isBPressed = false;                // Истина, когда кнопка нажата.  
 
@@ -30,9 +33,7 @@ void setup() {
   // инициализируем пин, подключенный к светодиоду, как выход
   pinMode(ledPin, OUTPUT);     
   // инициализируем пин, подключенный к кнопке, как вход
-  pinMode(buttonPin, INPUT);  
-
-  debouncer.attach(buttonPin); 
+  debouncer.attach(buttonPin, INPUT_PULLUP); 
 
   // initialize serial communication at 9600 bits per second:
   Serial.begin(115200);
@@ -49,35 +50,44 @@ void loop(){
 	unsigned long currentMillis = millis();
 
   // считываем значения с входа кнопки
-  bool bCurState = debouncer.read() == HIGH;
+  bool bCurState = debouncer.read() == LOW;
  
+  // Для удобства.
+  unsigned long deltaTime = currentMillis - previousMillis;
+
   // Если произошло изменение состояния кнопки
   if (bCurState != isBPressed) {
     isBPressed = bCurState;
 
-    // Если кнопка была отжата ранее наступления длинного интервала, произошёл щелчок.
+    // Если кнопка была отжата.
     if (!isBPressed) {
+      // Если кнопка была отжата ранее наступления интервала, произошёл щелчок.
+      if (deltaTime < maxClickDelay) {
+        // Отправляем событие либо щелчок либо двойной щелчок.
+        event(currentMillis - previousClickMillis < longPressFirstDelay ? bDobleClick : bClick);
 
-      // Условие вычисляем отдельно, для защиты от перехода через 0.
-      unsigned long condition = currentMillis - previousMillis;
+        // Сохраняем время.
+        previousClickMillis = currentMillis;
+      }
+    } 
+  } else {
+    // Если состояние не менялось.
 
-      if (condition < maxClickDelay)
-        event(bClick);
+    // Если кнопка в нажатом состоянии, и прошло достаточно времени, надо посылать долгое нажатие.
+    if (isBPressed) { 
+      if (deltaTime > longPressFirstDelay) {
+        event(bLongPress);
 
+        // Откорректируем время так, чтобы повторные длинные нажатия происходили быстро.
+        previousMillis = currentMillis - longPressFirstDelay + longPressRepeatDelay;
+      }
+    } else
+      // Если кнопка в отжатом состоянии, сбрасываем время.
       previousMillis = currentMillis;
-    }
+  }
 
-  }
-  
-  // если нажата, то buttonState будет HIGH:
-  if (isBPressed) {   
-    // включаем светодиод   
-     digitalWrite(ledPin, HIGH);
-  }
-  else {
-    // выключаем светодиод
-    digitalWrite(ledPin, LOW);
-  }
+  // Индикация на светодиоде.
+  digitalWrite(ledPin, isBPressed ? HIGH : LOW);
 }
 
 void event(int bCommand) {

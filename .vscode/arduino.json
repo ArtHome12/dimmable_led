@@ -2,6 +2,7 @@
     "programmer": "AVRISP mkII",
     "board": "arduino:avr:nano",
     "configuration": "cpu=atmega328old",
-    "sketch": "main.ino",
-    "port": "/dev/ttyUSB0"
+    "sketch": "dimmable_led.ino",
+    "port": "/dev/ttyUSB0",
+    "output": "/home/artem/git/dimmable_led/.bin"
 }
