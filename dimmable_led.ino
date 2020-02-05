@@ -49,7 +49,7 @@ void setup() {
   pinMode(driverPin, OUTPUT);
   analogWrite(driverPin, 255);
 
-  // Разгон частоты ШИМ. Пины D3 и D11 - 62.5 кГц
+  // Разгон частоты ШИМ. Пины D3 и D11 - 62.5 кГц https://alexgyver.ru/lessons/pwm-overclock/
   TCCR2B = 0b00000001; // x1
   TCCR2A = 0b00000011; // fast pwm
 
