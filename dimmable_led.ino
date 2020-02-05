@@ -11,31 +11,31 @@ Copyright (c) 2020 by Artem Khomenko _mag12@yahoo.com.
 #include <EEPROM.h>
 
 // Для отладки - если определено, в Serial выводятся сообщения.
-#define DEBUG
+//#define DEBUG
 
 
-// задаем константы
+// Адреса пинов
 const int buttonPin = 2;  // номер входа, подключенный к кнопке
 const int ledPin =  13;   // номер выхода светодиода
 const int driverPin = 3;  // номер выхода на драйвер (транзистор).    
  
 // Поддерживаемые события
 enum Events {
-  eClick,         // отжатие после щелчка
-  eLongPress,     // долгое нажатие
-  eLongPressFree, // отпуск после долгого нажатия
-  eDoubleClick    // двойной щелчок
+  eClick,                 // отжатие после щелчка
+  eLongPress,             // долгое нажатие
+  eLongPressFree,         // отпуск после долгого нажатия
+  eDoubleClick            // отжатие после двойного щелчка
 };
 
-unsigned long previousMillis = 0;         // Момент последнего обновления
-const unsigned long maxClickDelay = 500;  // Максимальное время для короткого щелчка, мс.
+unsigned long previousMillis = 0;               // Момент последнего обновления
+const unsigned long maxClickDelay = 500;        // Максимальное время для короткого щелчка, мс.
 const unsigned long longPressFirstDelay = 1000; // Время до первого события bLongPress, мс.
-const unsigned long longPressRepeatDelay = 10; // Время между повторными событиями bLongPress, мс.
-unsigned long previousClickMillis = 0;    // Время последнего короткого щелчка (для генерации двойного), мс.
+const unsigned long longPressRepeatDelay = 10;  // Время между повторными событиями bLongPress, мс.
+unsigned long previousClickMillis = 0;          // Время последнего короткого щелчка (для генерации двойного), мс.
 
-bool isBPressed = false;                // Истина, когда кнопка нажата.  
+bool isBPressed = false;                        // Истина, когда кнопка нажата.  
 
-const int eepromAddrShim = 0;       // Адрес для хранения в EEPROM признака завершения работы.
+const int eepromAddrPWM = 0;       // Адрес для хранения в EEPROM признака завершения работы.
 byte PWMLevel = 0;                  // Текущий уровень на ШИМ
 byte PWMLevelMinBright = 210;       // Минимальная яркость (с запасом, светится до 223)
 bool increaseUp = true;             // Направление увеличения яркости при повторении LongPress.
@@ -49,22 +49,22 @@ void setup() {
   pinMode(driverPin, OUTPUT);
   analogWrite(driverPin, 255);
 
-  // Пины D3 и D11 - 62.5 кГц
+  // Разгон частоты ШИМ. Пины D3 и D11 - 62.5 кГц
   TCCR2B = 0b00000001; // x1
   TCCR2A = 0b00000011; // fast pwm
 
   // инициализируем пин, подключенный к светодиоду, как выход
   pinMode(ledPin, OUTPUT);     
-  // инициализируем пин, подключенный к кнопке, как вход
+  // инициализируем пин, подключенный к кнопке с защитой от дребезга.
   debouncer.attach(buttonPin, INPUT_PULLUP);
 
 #if defined(DEBUG)
-  // initialize serial communication at 9600 bits per second:
+  // initialize serial communication:
   Serial.begin(115200);
 #endif
 
   // Прочитаем прежнее значение яркости из EEPROM
-  PWMLevel = EEPROM.read(eepromAddrShim);
+  PWMLevel = EEPROM.read(eepromAddrPWM);
 }
  
 void loop(){
@@ -72,8 +72,8 @@ void loop(){
   // Пропускаем дребезг.
   debouncer.update();
 
-	// Текущее время.
-	unsigned long currentMillis = millis();
+  // Текущее время.
+  unsigned long currentMillis = millis();
 
   // считываем значения с входа кнопки
   bool bCurState = debouncer.read() == LOW;
@@ -83,16 +83,17 @@ void loop(){
 
   // Если произошло изменение состояния кнопки
   if (bCurState != isBPressed) {
+    // Сохраняем новое состояние.
     isBPressed = bCurState;
 
     // Если кнопка была отжата.
     if (!isBPressed) {
-      // Если кнопка была отжата ранее наступления интервала, произошёл щелчок.
+      // Если кнопка была отжата быстро, значит произошёл щелчок.
       if (deltaTime < maxClickDelay) {
         // Отправляем событие либо щелчок либо двойной щелчок.
         event(currentMillis - previousClickMillis < longPressFirstDelay ? eDoubleClick : eClick);
 
-        // Сохраняем время.
+        // Сохраняем время щелчка для выявления двойного щелчка.
         previousClickMillis = currentMillis;
       } else {
         // Если кнопка была отжата после долговременного нажатия.
@@ -102,7 +103,7 @@ void loop(){
   } else {
     // Если состояние не менялось.
 
-    // Если кнопка в нажатом состShimоянии, и прошло достаточно времени, надо посылать долгое нажатие.
+    // Если кнопка в нажатом состоянии и прошло достаточно времени, надо посылать долгое нажатие.
     if (isBPressed) { 
       if (deltaTime > longPressFirstDelay) {
         event(eLongPress);
@@ -122,22 +123,24 @@ void loop(){
 void event(Events bCommand) {
   switch (bCommand)
   {
-  case eClick:
+    case eClick:
 #if defined(DEBUG)
-    Serial.println("Click");
+      Serial.println("Click");
 #endif
-    // Переключим освещение.
-    powerOn = !powerOn;
-    if (powerOn) {
-      // Для гарантированного включения должна быть яркость не ниже минимальной.
-      if (PWMLevel > PWMLevelMinBright) {
-        PWMLevel =  PWMLevelMinBright;
-      }
-      increaseUp = false;
-      analogWrite(driverPin, PWMLevel);
-  } else
-      // Выключение.
-      analogWrite(driverPin, 255);
+      // Переключим освещение.
+      powerOn = !powerOn;
+      if (powerOn) {
+        // Для гарантированного включения должна быть яркость не ниже минимальной.
+        PWMLevel = PWMLevel > PWMLevelMinBright ? PWMLevelMinBright : PWMLevel;
+
+        // После любого переключения при удержании кнопки яркость сначала увеличивается.
+        increaseUp = false;
+
+        // Управляем драйвером.
+        analogWrite(driverPin, PWMLevel);
+    } else
+        // Выключение.
+        analogWrite(driverPin, 255);
     break;
   
   case eLongPress:
@@ -181,14 +184,14 @@ void event(Events bCommand) {
 #if defined(DEBUG)
     Serial.println("Store PWM");
 #endif
-    EEPROM.write(eepromAddrShim, PWMLevel);
+    EEPROM.write(eepromAddrPWM, PWMLevel);
     break;
 
   default: // eDoubleClick
 #if defined(DEBUG)
     Serial.println("Double click");
 #endif
-    // Если лампа включена, включим её с максимальной яркостью
+    // Если лампа включена к повторному щелчку, т.е. была выключена при первом щелчке, включим её с максимальной яркостью
     if (powerOn) {
       PWMLevel = 0;
       analogWrite(driverPin, PWMLevel);
@@ -201,5 +204,4 @@ void event(Events bCommand) {
     }
     break;
   }
-  
 }
