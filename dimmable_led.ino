@@ -10,6 +10,10 @@ Copyright (c) 2020 by Artem Khomenko _mag12@yahoo.com.
 #include <Bounce2.h>
 #include <EEPROM.h>
 
+// Для отладки - если определено, в Serial выводятся сообщения.
+#define DEBUG
+
+
 // задаем константы
 const int buttonPin = 2;  // номер входа, подключенный к кнопке
 const int ledPin =  13;   // номер выхода светодиода
@@ -26,26 +30,38 @@ enum Events {
 unsigned long previousMillis = 0;         // Момент последнего обновления
 const unsigned long maxClickDelay = 500;  // Максимальное время для короткого щелчка, мс.
 const unsigned long longPressFirstDelay = 1000; // Время до первого события bLongPress, мс.
-const unsigned long longPressRepeatDelay = 50; // Время между повторными событиями bLongPress, мс.
+const unsigned long longPressRepeatDelay = 10; // Время между повторными событиями bLongPress, мс.
 unsigned long previousClickMillis = 0;    // Время последнего короткого щелчка (для генерации двойного), мс.
 
 bool isBPressed = false;                // Истина, когда кнопка нажата.  
 
 const int eepromAddrShim = 0;       // Адрес для хранения в EEPROM признака завершения работы.
 byte PWMLevel = 0;                  // Текущий уровень на ШИМ
+byte PWMLevelMinBright = 210;       // Минимальная яркость (с запасом, светится до 223)
 bool increaseUp = true;             // Направление увеличения яркости при повторении LongPress.
+bool powerOn = false;               // Включен или нет светодиод.
 
 // Для подавления дребезга
 Bounce debouncer = Bounce();
 
 void setup() {
+  // Пин на драйвер, сразу гасим лампу.
+  pinMode(driverPin, OUTPUT);
+  analogWrite(driverPin, 255);
+
+  // Пины D3 и D11 - 62.5 кГц
+  TCCR2B = 0b00000001; // x1
+  TCCR2A = 0b00000011; // fast pwm
+
   // инициализируем пин, подключенный к светодиоду, как выход
   pinMode(ledPin, OUTPUT);     
   // инициализируем пин, подключенный к кнопке, как вход
-  debouncer.attach(buttonPin, INPUT_PULLUP); 
+  debouncer.attach(buttonPin, INPUT_PULLUP);
 
+#if defined(DEBUG)
   // initialize serial communication at 9600 bits per second:
   Serial.begin(115200);
+#endif
 
   // Прочитаем прежнее значение яркости из EEPROM
   PWMLevel = EEPROM.read(eepromAddrShim);
@@ -107,12 +123,34 @@ void event(Events bCommand) {
   switch (bCommand)
   {
   case eClick:
+#if defined(DEBUG)
     Serial.println("Click");
+#endif
+    // Переключим освещение.
+    powerOn = !powerOn;
+    if (powerOn) {
+      // Для гарантированного включения должна быть яркость не ниже минимальной.
+      if (PWMLevel > PWMLevelMinBright) {
+        PWMLevel =  PWMLevelMinBright;
+      }
+      increaseUp = false;
+      analogWrite(driverPin, PWMLevel);
+  } else
+      // Выключение.
+      analogWrite(driverPin, 255);
     break;
   
   case eLongPress:
-    Serial.print("PWM Level ");
-    Serial.println(int(PWMLevel));
+    // Если лимпа выключена, надо начать с минимальной яркости.
+    if (!powerOn) {
+      PWMLevel =  PWMLevelMinBright;
+      increaseUp = false;
+      powerOn = true;
+      analogWrite(driverPin, PWMLevel);
+
+      // Задержка, чтобы человек успел отреагировать на включение и убрать палец.
+      delay(longPressFirstDelay);
+    }
 
     // Изменяем значение уровня.
     if (increaseUp) {
@@ -130,15 +168,37 @@ void event(Events bCommand) {
         PWMLevel--;
       }
     }
+
+    // Выдаём управляющий сигнал.
+#if defined(DEBUG)
+    Serial.print("PWM Level ");    Serial.println(int(PWMLevel));
+#endif
+    analogWrite(driverPin, PWMLevel);
+
     break;
   
   case eLongPressFree:
+#if defined(DEBUG)
     Serial.println("Store PWM");
+#endif
     EEPROM.write(eepromAddrShim, PWMLevel);
     break;
 
   default: // eDoubleClick
+#if defined(DEBUG)
     Serial.println("Double click");
+#endif
+    // Если лампа включена, включим её с максимальной яркостью
+    if (powerOn) {
+      PWMLevel = 0;
+      analogWrite(driverPin, PWMLevel);
+    } else {
+      // Если лампа выключена, приглушим её до минимальной яркости
+      PWMLevel =  PWMLevelMinBright;
+      increaseUp = false;
+      powerOn = true;
+      analogWrite(driverPin, PWMLevel);
+    }
     break;
   }
   
