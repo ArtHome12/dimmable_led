@@ -24,17 +24,29 @@
                 "ARDUINO_ARCH_AVR",
                 "__cplusplus=201103L",
                 "_VMICRO_INTELLISENSE"
-              ]   
+            ]
         },
         {
             "name": "Win32",
             "includePath": [
-                "${workspaceFolder}/**"
+                "${workspaceFolder}/**",
+                "C:\\Users\\_mag1\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.2\\**",
+                "C:\\Users\\_mag1\\AppData\\Local\\Arduino15\\packages\\arduino\\tools\\**",
+                "C:/Users/_mag1/OneDrive/Документы/Arduino/libraries/**"
+            ],
+            "forcedInclude": [
+                "C:\\Users\\_mag1\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.2\\cores\\arduino\\Arduino.h"
             ],
             "defines": [
-                "_DEBUG",
-                "UNICODE",
-                "_UNICODE"
+                "__AVR_atmega328p__",
+                "__AVR_ATmega328P__",
+                "__AVR_ATmega328p__",
+                "F_CPU=16000000L",
+                "ARDUINO=108010",
+                "ARDUINO_AVR_NANO",
+                "ARDUINO_ARCH_AVR",
+                "__cplusplus=201103L",
+                "_VMICRO_INTELLISENSE"
             ],
             "windowsSdkVersion": "10.0.18362.0",
             "compilerPath": "C:/Program Files (x86)/Microsoft Visual Studio/2019/BuildTools/VC/Tools/MSVC/14.24.28314/bin/Hostx64/x64/cl.exe",
