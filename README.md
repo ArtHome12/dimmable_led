@@ -18,4 +18,4 @@ The driver has 3 contacts on one side: zero, phase 220 volts and ground. On the 
 
 The driver power is declared 120W, under the cover it is already written 100W, in reality probably about 70W. As consumers - powerful LEDs on the 2mm aluminium plates.
 
-Under the driver cover on the group of three capacitors everywhere there is a voltage of 12 VDC, from which arduino is powered. There are also 5VDC and 6.4VDC on smaller capacitors.
+Under the driver cover on the group of three capacitors there is a voltage of 12 VDC, from which arduino is powered. There are also 5VDC and 6.4VDC on smaller capacitors.
