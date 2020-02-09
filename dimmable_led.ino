@@ -35,7 +35,7 @@ unsigned long previousClickMillis = 0;          // Время последнег
 
 bool isBPressed = false;                        // Истина, когда кнопка нажата.  
 
-const int eepromAddrPWM = 0;       // Адрес для хранения в EEPROM признака завершения работы.
+const int eepromAddrPWM = 0;        // Адрес для хранения в EEPROM признака завершения работы.
 byte PWMLevel = 0;                  // Текущий уровень на ШИМ
 byte PWMLevelMinBright = 210;       // Минимальная яркость (с запасом, светится до 223)
 bool increaseUp = true;             // Направление увеличения яркости при повторении LongPress.
@@ -153,6 +153,7 @@ void event(Events bCommand) {
 
       // Задержка, чтобы человек успел отреагировать на включение и убрать палец.
       delay(longPressFirstDelay);
+      break;
     }
 
     // Изменяем значение уровня.
@@ -172,11 +173,11 @@ void event(Events bCommand) {
       }
     }
 
-    // Выдаём управляющий сигнал.
+    // Выдаём управляющий сигнал - за счёт перебора значений ниже минимальной яркости будет удобная пауза.
 #if defined(DEBUG)
     Serial.print("PWM Level ");    Serial.println(int(PWMLevel));
 #endif
-    analogWrite(driverPin, PWMLevel);
+    analogWrite(driverPin, PWMLevel < PWMLevelMinBright ? PWMLevelMinBright : PWMLevel);
 
     break;
   
