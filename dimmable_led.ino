@@ -177,7 +177,7 @@ void event(Events bCommand) {
 #if defined(DEBUG)
     Serial.print("PWM Level ");    Serial.println(int(PWMLevel));
 #endif
-    analogWrite(driverPin, PWMLevel < PWMLevelMinBright ? PWMLevelMinBright : PWMLevel);
+    analogWrite(driverPin, PWMLevel > PWMLevelMinBright ? PWMLevelMinBright : PWMLevel);
 
     break;
   
