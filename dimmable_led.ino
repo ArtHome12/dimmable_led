@@ -37,9 +37,14 @@ bool isBPressed = false;                        // Истина, когда кн
 
 const int eepromAddrPWM = 0;        // Адрес для хранения в EEPROM признака завершения работы.
 byte PWMLevel = 0;                  // Текущий уровень на ШИМ
-byte PWMLevelMinBright = 210;       // Минимальная яркость (с запасом, светится до 223)
+const byte PWMLevelMinBright = 210; // Минимальная яркость (с запасом, светится до 223)
 bool increaseUp = true;             // Направление увеличения яркости при повторении LongPress.
 bool powerOn = false;               // Включен или нет светодиод.
+
+byte customPWMLimit = 0;            // Количество циклов без питания в случае, если работает собственный ШИМ.
+byte customPWMCount = 0;            // Текущий счётчик цикла для собственного ШИМ.
+
+
 
 // Для подавления дребезга
 Bounce debouncer = Bounce();
@@ -47,7 +52,7 @@ Bounce debouncer = Bounce();
 void setup() {
   // Пин на драйвер, сразу гасим лампу.
   pinMode(driverPin, OUTPUT);
-  analogWrite(driverPin, 255);
+  setPower(255);
 
   // Разгон частоты ШИМ. Пины D3 и D11 - 62.5 кГц https://alexgyver.ru/lessons/pwm-overclock/
 #ifndef __INTELLISENSE__    // Обходим глюк интеллисенса, не понимающего include внутри ifdef.
@@ -120,6 +125,17 @@ void loop(){
 
   // Индикация на светодиоде.
   digitalWrite(ledPin, isBPressed ? HIGH : LOW);
+
+  // Собственный ШИМ - включаем минимальную яркость только раз на цикл.
+  if (customPWMLimit > 0) {
+    // Минимизируем количество медленных вызовов analogWrite()
+    if (customPWMCount == 0) {
+      analogWrite(driverPin, PWMLevelMinBright);      // включаем на минимальной яркости.
+      customPWMCount = customPWMLimit;
+    } else if (customPWMCount-- == customPWMLimit) {  // после проверки условия уменьшаем счётчик.
+      analogWrite(driverPin, 255);                    // выключаем.
+    }
+  }
 }
 
 void event(Events bCommand) {
@@ -133,25 +149,26 @@ void event(Events bCommand) {
       powerOn = !powerOn;
       if (powerOn) {
         // Для гарантированного включения должна быть яркость не ниже минимальной.
-        PWMLevel = PWMLevel > PWMLevelMinBright ? PWMLevelMinBright : PWMLevel;
+        //PWMLevel = PWMLevel > PWMLevelMinBright ? PWMLevelMinBright : PWMLevel;
 
         // После любого переключения при удержании кнопки яркость сначала увеличивается.
         increaseUp = false;
 
         // Управляем драйвером.
-        analogWrite(driverPin, PWMLevel);
+        setPower(PWMLevel);
     } else
         // Выключение.
-        analogWrite(driverPin, 255);
+        setPower(255);
     break;
   
   case eLongPress:
     // Если лимпа выключена, надо начать с минимальной яркости.
     if (!powerOn) {
-      PWMLevel =  PWMLevelMinBright;
+      // PWMLevel =  PWMLevelMinBright;
+      PWMLevel =  254;
       increaseUp = false;
       powerOn = true;
-      analogWrite(driverPin, PWMLevel);
+      setPower(PWMLevel);
 
       // Задержка, чтобы человек успел отреагировать на включение и убрать палец.
       delay(longPressFirstDelay);
@@ -160,8 +177,11 @@ void event(Events bCommand) {
 
     // Изменяем значение уровня.
     if (increaseUp) {
-      if (PWMLevel == 255) {
-        PWMLevel = 254;
+      if (PWMLevel == 254) {  // Минимальная яркость.
+        // Задержка, чтобы человек успел отреагировать и убрать палец.
+        delay(longPressFirstDelay);
+
+        PWMLevel = 253;
         increaseUp = false;
       } else {
           PWMLevel++;
@@ -179,7 +199,8 @@ void event(Events bCommand) {
 #if defined(DEBUG)
     Serial.print("PWM Level ");    Serial.println(int(PWMLevel));
 #endif
-    analogWrite(driverPin, PWMLevel > PWMLevelMinBright ? PWMLevelMinBright : PWMLevel);
+    // setPower(PWMLevel > PWMLevelMinBright ? PWMLevelMinBright : PWMLevel);
+    setPower(PWMLevel);
 
     break;
   
@@ -197,14 +218,27 @@ void event(Events bCommand) {
     // Если лампа включена к повторному щелчку, т.е. была выключена при первом щелчке, включим её с максимальной яркостью
     if (powerOn) {
       PWMLevel = 0;
-      analogWrite(driverPin, PWMLevel);
+      setPower(PWMLevel);
     } else {
       // Если лампа выключена, приглушим её до минимальной яркости
-      PWMLevel =  PWMLevelMinBright;
+      // PWMLevel =  PWMLevelMinBright;
+      PWMLevel =  254;
       increaseUp = false;
       powerOn = true;
-      analogWrite(driverPin, PWMLevel);
+      setPower(PWMLevel);
     }
     break;
+  }
+}
+
+void setPower(byte level)
+{
+  // Если уровень яркости ниже способности ШИМ блока питания, включаем собственный ШИМ.
+  if (PWMLevel < 255 && PWMLevel > PWMLevelMinBright) {
+    customPWMLimit = PWMLevel - PWMLevelMinBright;
+    customPWMCount = customPWMLimit;
+  } else {
+    customPWMLimit = 0;
+    analogWrite(driverPin, level);
   }
 }
