@@ -4,5 +4,5 @@
     "configuration": "cpu=atmega328old",
     "sketch": "dimmable_led.ino",
     "port": "/dev/ttyUSB0",
-    "output": "/home/artem/git/dimmable_led/.bin"
+    "output": ".bin"
 }
