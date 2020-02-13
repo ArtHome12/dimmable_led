@@ -5,13 +5,10 @@
             "includePath": [
                 "/home/artem/.arduino15/packages/arduino/tools/**",
                 "/home/artem/.arduino15/packages/arduino/hardware/avr/1.8.2/**",
-                "/home/artem/arduino/libraries/**",
-                "C:\\Users\\_mag1\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.2\\**",
-                "C:\\Users\\_mag1\\AppData\\Local\\Arduino15\\packages\\arduino\\tools\\**"
+                "/home/artem/arduino/libraries/**"
             ],
             "forcedInclude": [
-                "/home/artem/.arduino15/packages/arduino/hardware/avr/1.8.2/cores/arduino/Arduino.h",
-                "C:\\Users\\_mag1\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.2\\cores\\arduino\\Arduino.h"
+                "/home/artem/.arduino15/packages/arduino/hardware/avr/1.8.2/cores/arduino/Arduino.h"
             ],
             "intelliSenseMode": "gcc-x64",
             "compilerPath": "/usr/bin/clang",
@@ -32,15 +29,18 @@
         {
             "name": "Win32",
             "includePath": [
-                "${workspaceFolder}/**",
-                "C:\\Users\\_mag1\\AppData\\Local\\arduino15\\packages\\arduino\\hardware\\avr\\1.8.2\\cores\\arduino",
-                "C:\\Users\\_mag1\\AppData\\Local\\arduino15\\packages\\arduino\\hardware\\avr\\1.8.2\\variants\\standard",
-                "C:/Users/_mag1/OneDrive/Документы/Arduino/libraries/**"
+                "${workspaceFolder}\\**",
+                "C:\\Users\\_mag1\\AppData\\Local\\Arduino15\\packages\\arduino\\tools\\avr-gcc\\7.3.0-atmel3.6.1-arduino5\\avr\\include",
+                "C:\\Users\\_mag1\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.2\\**",
+                "C:\\Users\\_mag1\\OneDrive\\Документы\\Arduino\\libraries\\**"
             ],
             "forcedInclude": [
                 "C:\\Users\\_mag1\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.2\\cores\\arduino\\Arduino.h"
             ],
             "defines": [
+                "__AVR_atmega328p__",
+                "__AVR_ATmega328P__",
+                "__AVR_ATmega328p__",
                 "F_CPU=16000000L",
                 "ARDUINO=10810",
                 "ARDUINO_AVR_NANO",
