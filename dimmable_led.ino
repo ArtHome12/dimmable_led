@@ -50,8 +50,10 @@ void setup() {
   analogWrite(driverPin, 255);
 
   // Разгон частоты ШИМ. Пины D3 и D11 - 62.5 кГц https://alexgyver.ru/lessons/pwm-overclock/
+#ifndef __INTELLISENSE__    // Обходим глюк интеллисенса, не понимающего include внутри ifdef.
   TCCR2B = 0b00000001; // x1
   TCCR2A = 0b00000011; // fast pwm
+#endif
 
   // инициализируем пин, подключенный к светодиоду, как выход
   pinMode(ledPin, OUTPUT);     
