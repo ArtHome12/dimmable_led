@@ -45,20 +45,11 @@ bool powerOn = false;               // Включен или нет светод
 Bounce debouncer = Bounce();
 
 void setup() {
-  // Пин на драйвер, сразу гасим лампу.
-  pinMode(driverPin, OUTPUT);
-  analogWrite(driverPin, 255);
-
   // Разгон частоты ШИМ. Пины D3 и D11 - 62.5 кГц https://alexgyver.ru/lessons/pwm-overclock/
 #ifndef __INTELLISENSE__    // Обходим глюк интеллисенса, не понимающего include внутри ifdef.
   TCCR2B = 0b00000001; // x1
   TCCR2A = 0b00000011; // fast pwm
 #endif
-
-  // инициализируем пин, подключенный к светодиоду, как выход
-  pinMode(ledPin, OUTPUT);     
-  // инициализируем пин, подключенный к кнопке с защитой от дребезга.
-  debouncer.attach(buttonPin, INPUT_PULLUP);
 
 #if defined(DEBUG)
   // initialize serial communication:
@@ -67,6 +58,19 @@ void setup() {
 
   // Прочитаем прежнее значение яркости из EEPROM
   PWMLevel = EEPROM.read(eepromAddrPWM);
+
+  // Пин на драйвер, сразу гасим лампу.
+  pinMode(driverPin, OUTPUT);
+  analogWrite(driverPin, 255);
+
+  // инициализируем пин, подключенный к светодиоду, как выход
+  pinMode(ledPin, OUTPUT);     
+  // инициализируем пин, подключенный к кнопке с защитой от дребезга.
+  debouncer.attach(buttonPin, INPUT_PULLUP);
+
+  // Пропускаем возможный дребезг из-за включения.
+  delay(600);
+  debouncer.update();
 }
  
 void loop() {
