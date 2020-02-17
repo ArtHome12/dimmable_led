@@ -69,7 +69,7 @@ void setup() {
   PWMLevel = EEPROM.read(eepromAddrPWM);
 }
  
-void loop(){
+void loop() {
 
   // Пропускаем дребезг.
   debouncer.update();
@@ -140,9 +140,11 @@ void event(Events bCommand) {
 
         // Управляем драйвером.
         analogWrite(driverPin, PWMLevel);
+        EEPROM.write(eepromAddrPWM, PWMLevel);
     } else
         // Выключение.
         analogWrite(driverPin, 255);
+        EEPROM.write(eepromAddrPWM, 255);
     break;
   
   case eLongPress:
@@ -205,6 +207,7 @@ void event(Events bCommand) {
       powerOn = true;
       analogWrite(driverPin, PWMLevel);
     }
+    EEPROM.write(eepromAddrPWM, PWMLevel);
     break;
   }
 }
