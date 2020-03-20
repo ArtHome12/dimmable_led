@@ -9,9 +9,10 @@ Copyright (c) 2020 by Artem Khomenko _mag12@yahoo.com.
 
 #include <Bounce2.h>
 #include <EEPROM.h>
+#include <HTU21D.h>
 
 // Для отладки - если определено, в Serial выводятся сообщения.
-//#define DEBUG
+#define DEBUG
 
 
 // Адреса пинов
@@ -32,17 +33,26 @@ const unsigned long maxClickDelay = 500;        // Максимальное вр
 const unsigned long longPressFirstDelay = 1000; // Время до первого события bLongPress, мс.
 const unsigned long longPressRepeatDelay = 10;  // Время между повторными событиями bLongPress, мс.
 unsigned long previousClickMillis = 0;          // Время последнего короткого щелчка (для генерации двойного), мс.
+const unsigned long temperatureControlDelay = 12000;  // Время между измерениями температуры, мс.
+unsigned long temperatureControlMillis = 0;           // Время последнего измерения температуры, мс.
 
 bool isBPressed = false;                        // Истина, когда кнопка нажата.  
 
 const int eepromAddrPWM = 0;        // Адрес для хранения в EEPROM признака завершения работы.
 byte PWMLevel = 0;                  // Текущий уровень на ШИМ
-byte PWMLevelMinBright = 210;       // Минимальная яркость (с запасом, светится до 223)
+const byte PWMLevelMinBright = 210; // Минимальная яркость (с запасом, светится до 223)
+const byte PWMLevelHalfBright = 120;// Минимальная яркость (с запасом, светится до 223)
 bool increaseUp = true;             // Направление увеличения яркости при повторении LongPress.
 bool powerOn = false;               // Включен или нет светодиод.
 
+const float cWarningTemp = 44.0;    // Температура, при которой надо убавить яркость наполовину.
+const float cCriticalTemp = 45.0;   // Температура, при которой надо убавить яркость на минимум.
+
 // Для подавления дребезга
 Bounce debouncer = Bounce();
+
+HTU21D myHTU21D(HTU21D_RES_RH12_TEMP14);        // Интерфейс к датчику температуры и влажности.
+
 
 void setup() {
   // Разгон частоты ШИМ. Пины D3 и D11 - 62.5 кГц https://alexgyver.ru/lessons/pwm-overclock/
@@ -67,6 +77,9 @@ void setup() {
   pinMode(ledPin, OUTPUT);     
   // инициализируем пин, подключенный к кнопке с защитой от дребезга.
   debouncer.attach(buttonPin, INPUT_PULLUP);
+
+  // Датчик температуры.
+  myHTU21D.begin();
 
   // Пропускаем возможный дребезг из-за включения.
   delay(600);
@@ -121,6 +134,28 @@ void loop() {
       // Если кнопка в отжатом состоянии, сбрасываем время.
       previousMillis = currentMillis;
   }
+
+  // Контроль температуры
+  if (currentMillis - temperatureControlMillis > temperatureControlDelay) {
+    
+    // Сохраним время текущего контроля температуры.
+    temperatureControlMillis = currentMillis;
+
+    // Прочитаем температуру с датчика (+-0.3C).
+    float temp = myHTU21D.readTemperature();
+
+    // Определим максимально допустимую яркость.
+    byte maxAllowedBright = temp > cCriticalTemp ? PWMLevelMinBright : (temp > cWarningTemp ? PWMLevelHalfBright : 0);
+    
+    // Ограничим максимальную яркость.
+    if (PWMLevel < maxAllowedBright)
+
+      analogWrite(driverPin, maxAllowedBright);
+#if defined(DEBUG)
+      Serial.print("Temperature ");   Serial.print(temp); Serial.print("C, maxAllowedBright ");   Serial.println(maxAllowedBright);
+#endif
+  }
+
 
   // Индикация на светодиоде.
   digitalWrite(ledPin, isBPressed ? HIGH : LOW);
