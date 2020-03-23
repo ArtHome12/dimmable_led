@@ -41,12 +41,12 @@ bool isBPressed = false;                        // Истина, когда кн
 const int eepromAddrPWM = 0;        // Адрес для хранения в EEPROM признака завершения работы.
 byte PWMLevel = 0;                  // Текущий уровень на ШИМ
 const byte PWMLevelMinBright = 210; // Минимальная яркость (с запасом, светится до 223)
-const byte PWMLevelHalfBright = 120;// Минимальная яркость (с запасом, светится до 223)
+const byte PWMLevelHalfBright = 75;// Половинная яркость (с запасом, светится до 223)
 bool increaseUp = true;             // Направление увеличения яркости при повторении LongPress.
 bool powerOn = false;               // Включен или нет светодиод.
 
-const float cWarningTemp = 44.0;    // Температура, при которой надо убавить яркость наполовину.
-const float cCriticalTemp = 45.0;   // Температура, при которой надо убавить яркость на минимум.
+const float cWarningTemp = 50.0;    // Температура, при которой надо убавить яркость наполовину.
+const float cCriticalTemp = 60.0;   // Температура, при которой надо убавить яркость на минимум.
 
 // Для подавления дребезга
 Bounce debouncer = Bounce();
@@ -64,6 +64,7 @@ void setup() {
 #if defined(DEBUG)
   // initialize serial communication:
   Serial.begin(115200);
+  Serial.println("Start...");
 #endif
 
   // Прочитаем прежнее значение яркости из EEPROM
@@ -149,10 +150,12 @@ void loop() {
     
     // Ограничим максимальную яркость.
     if (PWMLevel < maxAllowedBright)
-
       analogWrite(driverPin, maxAllowedBright);
+      
 #if defined(DEBUG)
-      Serial.print("Temperature ");   Serial.print(temp); Serial.print("C, maxAllowedBright ");   Serial.println(maxAllowedBright);
+      Serial.print("Temperature ");   Serial.print(temp); 
+      Serial.print("C, maxAllowedBright ");   Serial.print(maxAllowedBright);
+      Serial.print(" PWMLevel ");   Serial.println(PWMLevel);
 #endif
   }
 
