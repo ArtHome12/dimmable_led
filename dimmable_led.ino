@@ -12,20 +12,20 @@ Copyright (c) 2020 by Artem Khomenko _mag12@yahoo.com.
 #include <HTU21D.h>
 
 // Для отладки - если определено, в Serial выводятся сообщения.
-#define DEBUG
+//#define DEBUG
 
 
 // Адреса пинов
 const int buttonPin = 2;  // номер входа, подключенный к кнопке
 const int ledPin =  13;   // номер выхода светодиода
-const int driverPin = 3;  // номер выхода на драйвер (транзистор).    
- 
+const int driverPin = 3;  // номер выхода на драйвер (транзистор).
+
 // Поддерживаемые события
 enum Events {
-  eClick,                 // отжатие после щелчка
-  eLongPress,             // долгое нажатие
-  eLongPressFree,         // отпуск после долгого нажатия
-  eDoubleClick            // отжатие после двойного щелчка
+   eClick,                 // отжатие после щелчка
+   eLongPress,             // долгое нажатие
+   eLongPressFree,         // отпуск после долгого нажатия
+   eDoubleClick            // отжатие после двойного щелчка
 };
 
 unsigned long previousMillis = 0;               // Момент последнего обновления
@@ -36,7 +36,7 @@ unsigned long previousClickMillis = 0;          // Время последнег
 const unsigned long temperatureControlDelay = 12000;  // Время между измерениями температуры, мс.
 unsigned long temperatureControlMillis = 0;           // Время последнего измерения температуры, мс.
 
-bool isBPressed = false;                        // Истина, когда кнопка нажата.  
+bool isBPressed = false;                        // Истина, когда кнопка нажата.
 
 const int eepromAddrPWM = 0;        // Адрес для хранения в EEPROM признака завершения работы.
 byte PWMLevel = 0;                  // Текущий уровень на ШИМ
@@ -46,7 +46,7 @@ bool increaseUp = true;             // Направление увеличени
 bool powerOn = false;               // Включен или нет светодиод.
 
 const float cWarningTemp = 50.0;    // Температура, при которой надо убавить яркость наполовину.
-const float cCriticalTemp = 60.0;   // Температура, при которой надо убавить яркость на минимум.
+const float cCriticalTemp = 75.0;   // Температура, при которой надо убавить яркость на минимум.
 
 // Для подавления дребезга
 Bounce debouncer = Bounce();
@@ -55,201 +55,201 @@ HTU21D myHTU21D(HTU21D_RES_RH12_TEMP14);        // Интерфейс к дат�
 
 
 void setup() {
-  // Разгон частоты ШИМ. Пины D3 и D11 - 62.5 кГц https://alexgyver.ru/lessons/pwm-overclock/
+   // Разгон частоты ШИМ. Пины D3 и D11 - 62.5 кГц https://alexgyver.ru/lessons/pwm-overclock/
 #ifndef __INTELLISENSE__    // Обходим глюк интеллисенса, не понимающего include внутри ifdef.
-  TCCR2B = 0b00000001; // x1
-  TCCR2A = 0b00000011; // fast pwm
+   TCCR2B = 0b00000001; // x1
+   TCCR2A = 0b00000011; // fast pwm
 #endif
 
 #if defined(DEBUG)
-  // initialize serial communication:
-  Serial.begin(115200);
-  Serial.println("Start...");
+   // initialize serial communication:
+   Serial.begin(115200);
+   Serial.println("Start...");
 #endif
 
-  // Прочитаем прежнее значение яркости из EEPROM
-  PWMLevel = EEPROM.read(eepromAddrPWM);
+   // Прочитаем прежнее значение яркости из EEPROM
+   PWMLevel = EEPROM.read(eepromAddrPWM);
 
-  // Пин на драйвер, сразу гасим лампу.
-  pinMode(driverPin, OUTPUT);
-  analogWrite(driverPin, 255);
+   // Пин на драйвер, сразу гасим лампу.
+   pinMode(driverPin, OUTPUT);
+   analogWrite(driverPin, 255);
 
-  // инициализируем пин, подключенный к светодиоду, как выход
-  pinMode(ledPin, OUTPUT);     
-  // инициализируем пин, подключенный к кнопке с защитой от дребезга.
-  debouncer.attach(buttonPin, INPUT_PULLUP);
+   // инициализируем пин, подключенный к светодиоду, как выход
+   pinMode(ledPin, OUTPUT);
+   // инициализируем пин, подключенный к кнопке с защитой от дребезга.
+   debouncer.attach(buttonPin, INPUT_PULLUP);
 
-  // Датчик температуры.
-  myHTU21D.begin();
+   // Датчик температуры.
+   myHTU21D.begin();
 
-  // Пропускаем возможный дребезг из-за включения.
-  delay(600);
-  debouncer.update();
+   // Пропускаем возможный дребезг из-за включения.
+   delay(600);
+   debouncer.update();
 }
- 
+
 void loop() {
 
-  // Пропускаем дребезг.
-  debouncer.update();
+   // Пропускаем дребезг.
+   debouncer.update();
 
-  // Текущее время.
-  unsigned long currentMillis = millis();
+   // Текущее время.
+   unsigned long currentMillis = millis();
 
-  // считываем значения с входа кнопки
-  bool bCurState = debouncer.read() == LOW;
- 
-  // Для удобства.
-  unsigned long deltaTime = currentMillis - previousMillis;
+   // считываем значения с входа кнопки
+   bool bCurState = debouncer.read() == LOW;
 
-  // Если произошло изменение состояния кнопки
-  if (bCurState != isBPressed) {
-    // Сохраняем новое состояние.
-    isBPressed = bCurState;
+   // Для удобства.
+   unsigned long deltaTime = currentMillis - previousMillis;
 
-    // Если кнопка была отжата.
-    if (!isBPressed) {
-      // Если кнопка была отжата быстро, значит произошёл щелчок.
-      if (deltaTime < maxClickDelay) {
-        // Отправляем событие либо щелчок либо двойной щелчок.
-        event(currentMillis - previousClickMillis < longPressFirstDelay ? eDoubleClick : eClick);
+   // Если произошло изменение состояния кнопки
+   if (bCurState != isBPressed) {
+      // Сохраняем новое состояние.
+      isBPressed = bCurState;
 
-        // Сохраняем время щелчка для выявления двойного щелчка.
-        previousClickMillis = currentMillis;
-      } else {
-        // Если кнопка была отжата после долговременного нажатия.
-        event(eLongPressFree);
-      } 
-    } 
-  } else {
-    // Если состояние не менялось.
+      // Если кнопка была отжата.
+      if (!isBPressed) {
+         // Если кнопка была отжата быстро, значит произошёл щелчок.
+         if (deltaTime < maxClickDelay) {
+            // Отправляем событие либо щелчок либо двойной щелчок.
+            event(currentMillis - previousClickMillis < longPressFirstDelay ? eDoubleClick : eClick);
 
-    // Если кнопка в нажатом состоянии и прошло достаточно времени, надо посылать долгое нажатие.
-    if (isBPressed) { 
-      if (deltaTime > longPressFirstDelay) {
-        event(eLongPress);
-
-        // Откорректируем время так, чтобы повторные длинные нажатия происходили быстро.
-        previousMillis = currentMillis - longPressFirstDelay + longPressRepeatDelay;
+            // Сохраняем время щелчка для выявления двойного щелчка.
+            previousClickMillis = currentMillis;
+         } else {
+            // Если кнопка была отжата после долговременного нажатия.
+            event(eLongPressFree);
+         }
       }
-    } else
-      // Если кнопка в отжатом состоянии, сбрасываем время.
-      previousMillis = currentMillis;
-  }
+   } else {
+      // Если состояние не менялось.
 
-  // Контроль температуры
-  if (currentMillis - temperatureControlMillis > temperatureControlDelay) {
-    
-    // Сохраним время текущего контроля температуры.
-    temperatureControlMillis = currentMillis;
+      // Если кнопка в нажатом состоянии и прошло достаточно времени, надо посылать долгое нажатие.
+      if (isBPressed) {
+         if (deltaTime > longPressFirstDelay) {
+            event(eLongPress);
 
-    // Прочитаем температуру с датчика (+-0.3C).
-    float temp = myHTU21D.readTemperature();
+            // Откорректируем время так, чтобы повторные длинные нажатия происходили быстро.
+            previousMillis = currentMillis - longPressFirstDelay + longPressRepeatDelay;
+         }
+      } else {
+         // Если кнопка в отжатом состоянии, сбрасываем время.
+         previousMillis = currentMillis;
+      }
+   }
 
-    // Определим максимально допустимую яркость.
-    byte maxAllowedBright = temp > cCriticalTemp ? PWMLevelMinBright : (temp > cWarningTemp ? PWMLevelHalfBright : 0);
-    
-    // Ограничим максимальную яркость.
-    if (PWMLevel < maxAllowedBright)
-      analogWrite(driverPin, maxAllowedBright);
-      
-#if defined(DEBUG)
-      Serial.print("Temperature ");   Serial.print(temp); 
+   // Контроль температуры
+   if (currentMillis - temperatureControlMillis > temperatureControlDelay) {
+
+      // Сохраним время текущего контроля температуры.
+      temperatureControlMillis = currentMillis;
+
+      // Прочитаем температуру с датчика (+-0.3C).
+      float temp = myHTU21D.readTemperature();
+
+      // Определим максимально допустимую яркость.
+      byte maxAllowedBright = temp > cCriticalTemp ? PWMLevelMinBright : (temp > cWarningTemp ? PWMLevelHalfBright : 0);
+
+      // Ограничим максимальную яркость.
+      if (PWMLevel < maxAllowedBright)
+         analogWrite(driverPin, maxAllowedBright);
+
+   #if defined(DEBUG)
+      Serial.print("Temperature ");   Serial.print(temp);
       Serial.print("C, maxAllowedBright ");   Serial.print(maxAllowedBright);
       Serial.print(" PWMLevel ");   Serial.println(PWMLevel);
-#endif
-  }
+   #endif
+}
 
 
-  // Индикация на светодиоде.
-  digitalWrite(ledPin, isBPressed ? HIGH : LOW);
+   // Индикация на светодиоде.
+   digitalWrite(ledPin, isBPressed ? HIGH : LOW);
 }
 
 void event(Events bCommand) {
-  switch (bCommand)
-  {
-    case eClick:
-#if defined(DEBUG)
-      Serial.println("Click");
-#endif
-      // Переключим освещение.
-      powerOn = !powerOn;
-      if (powerOn) {
-        // Для гарантированного включения должна быть яркость не ниже минимальной.
-        PWMLevel = PWMLevel > PWMLevelMinBright ? PWMLevelMinBright : PWMLevel;
+   switch (bCommand) {
+      case eClick:
+         #if defined(DEBUG)
+            Serial.println("Click");
+         #endif
 
-        // После любого переключения при удержании кнопки яркость сначала увеличивается.
-        increaseUp = false;
+         // Переключим освещение.
+         powerOn = !powerOn;
+         if (powerOn) {
+            // Для гарантированного включения должна быть яркость не ниже минимальной.
+            PWMLevel = PWMLevel > PWMLevelMinBright ? PWMLevelMinBright : PWMLevel;
 
-        // Управляем драйвером.
-        analogWrite(driverPin, PWMLevel);
-        EEPROM.write(eepromAddrPWM, PWMLevel);
-    } else
-        // Выключение.
-        analogWrite(driverPin, 255);
-        EEPROM.write(eepromAddrPWM, 255);
-    break;
-  
-  case eLongPress:
-    // Если лимпа выключена, надо начать с минимальной яркости.
-    if (!powerOn) {
-      PWMLevel =  PWMLevelMinBright;
-      increaseUp = false;
-      powerOn = true;
-      analogWrite(driverPin, PWMLevel);
+            // После любого переключения при удержании кнопки яркость сначала увеличивается.
+            increaseUp = false;
+         } else
+            // Выключение.
+            PWMLevel = 255;
 
-      // Задержка, чтобы человек успел отреагировать на включение и убрать палец.
-      delay(longPressFirstDelay);
+         // Управляем драйвером.
+         analogWrite(driverPin, PWMLevel);
+         EEPROM.write(eepromAddrPWM, PWMLevel);
       break;
-    }
 
-    // Изменяем значение уровня.
-    if (increaseUp) {
-      if (PWMLevel == 255) {
-        PWMLevel = 254;
-        increaseUp = false;
-      } else {
-          PWMLevel++;
-      }
-    } else {
-      if (PWMLevel == 0) {
-        PWMLevel = 1;
-        increaseUp = true;
-      } else {
-        PWMLevel--;
-      }
-    }
+      case eLongPress:
+         // Если лимпа выключена, надо начать с минимальной яркости.
+         if (!powerOn) {
+            PWMLevel =  PWMLevelMinBright;
+            increaseUp = false;
+            powerOn = true;
+            analogWrite(driverPin, PWMLevel);
 
-    // Выдаём управляющий сигнал - за счёт перебора значений ниже минимальной яркости будет удобная пауза.
-#if defined(DEBUG)
-    Serial.print("PWM Level ");    Serial.println(int(PWMLevel));
-#endif
-    analogWrite(driverPin, PWMLevel > PWMLevelMinBright ? PWMLevelMinBright : PWMLevel);
+            // Задержка, чтобы человек успел отреагировать на включение и убрать палец.
+            delay(longPressFirstDelay);
+            break;
+         }
 
-    break;
-  
-  case eLongPressFree:
-#if defined(DEBUG)
-    Serial.println("Store PWM");
-#endif
-    EEPROM.write(eepromAddrPWM, PWMLevel);
-    break;
+         // Изменяем значение уровня.
+         if (increaseUp) {
+            if (PWMLevel == 255) {
+               PWMLevel = 254;
+               increaseUp = false;
+            } else {
+               PWMLevel++;
+            }
+         } else {
+            if (PWMLevel == 0) {
+               PWMLevel = 1;
+               increaseUp = true;
+            } else {
+               PWMLevel--;
+            }
+         }
 
-  default: // eDoubleClick
-#if defined(DEBUG)
-    Serial.println("Double click");
-#endif
-    // Если лампа включена к повторному щелчку, т.е. была выключена при первом щелчке, включим её с максимальной яркостью
-    if (powerOn) {
-      PWMLevel = 0;
-      analogWrite(driverPin, PWMLevel);
-    } else {
-      // Если лампа выключена, приглушим её до минимальной яркости
-      PWMLevel =  PWMLevelMinBright;
-      increaseUp = false;
-      powerOn = true;
-      analogWrite(driverPin, PWMLevel);
-    }
-    EEPROM.write(eepromAddrPWM, PWMLevel);
-    break;
-  }
+         // Выдаём управляющий сигнал - за счёт перебора значений ниже минимальной яркости будет удобная пауза.
+         #if defined(DEBUG)
+            Serial.print("PWM Level ");    Serial.println(int(PWMLevel));
+         #endif
+         analogWrite(driverPin, PWMLevel > PWMLevelMinBright ? PWMLevelMinBright : PWMLevel);
+
+      break;
+
+      case eLongPressFree:
+         #if defined(DEBUG)
+            Serial.println("Store PWM");
+         #endif
+         EEPROM.write(eepromAddrPWM, PWMLevel);
+      break;
+
+      default: // eDoubleClick
+         #if defined(DEBUG)
+            Serial.println("Double click");
+         #endif
+         // Если лампа включена к повторному щелчку, т.е. была выключена при первом щелчке, включим её с максимальной яркостью
+         if (powerOn) {
+            PWMLevel = 0;
+         } else {
+            // Если лампа выключена, приглушим её до минимальной яркости
+            PWMLevel =  PWMLevelMinBright;
+            increaseUp = false;
+            powerOn = true;
+         }
+
+         analogWrite(driverPin, PWMLevel);
+         EEPROM.write(eepromAddrPWM, PWMLevel);
+      break;
+   }
 }
